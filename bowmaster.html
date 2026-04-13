@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bowmasters: Ultimate Powers - Deluxe Edition</title>
+    <title>Bowmasters: Ultimate Powers - Final Merge Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background: #1a1a1a; touch-action: none; font-family: 'Arial Black', sans-serif; }
         canvas { display: block; }
@@ -160,45 +160,17 @@
 
     function initBackground() {
         game.bgElements = [];
-        for(let i=0; i<40; i++) {
-            game.bgElements.push({
-                x: Math.random() * WORLD_WIDTH,
-                y: Math.random() * (window.innerHeight * 0.6),
-                size: Math.random() * 60 + 40,
-                speed: Math.random() * 0.5 + 0.1,
-                opacity: Math.random() * 0.4 + 0.1
-            });
-        }
+        for(let i=0; i<60; i++) game.bgElements.push({ x: Math.random() * WORLD_WIDTH, y: Math.random() * window.innerHeight, size: Math.random() * 3 + 1 });
     }
 
     function drawBackground() {
-        let settings = MAP_SETTINGS[game.currentMap];
-        let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        grad.addColorStop(0, settings.sky);
-        grad.addColorStop(1, "#ffffff");
-        ctx.fillStyle = grad;
+        ctx.fillStyle = MAP_SETTINGS[game.currentMap].sky;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
         game.bgElements.forEach(el => {
-            let drawX = (el.x - game.cameraX * el.speed) % WORLD_WIDTH;
-            if (drawX < -150) drawX += WORLD_WIDTH;
-
-            ctx.fillStyle = `rgba(255, 255, 255, ${el.opacity})`;
-            
-            if (settings.bgType === 'clouds') {
-                ctx.beginPath();
-                ctx.arc(drawX, el.y, el.size * 0.5, 0, Math.PI * 2);
-                ctx.arc(drawX + el.size * 0.3, el.y - el.size * 0.2, el.size * 0.4, 0, Math.PI * 2);
-                ctx.arc(drawX + el.size * 0.6, el.y, el.size * 0.4, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (settings.bgType === 'stars') {
-                ctx.beginPath(); ctx.arc(drawX, el.y, el.size * 0.05, 0, Math.PI * 2); ctx.fill();
-            } else if (settings.bgType === 'dust' || settings.bgType === 'embers') {
-                ctx.fillStyle = settings.bgType === 'embers' ? `rgba(255, 100, 0, ${el.opacity})` : `rgba(200, 200, 150, ${el.opacity})`;
-                ctx.fillRect(drawX, el.y, el.size * 0.1, el.size * 0.1);
-            } else if (settings.bgType === 'snow') {
-                ctx.beginPath(); ctx.arc(drawX, el.y, el.size * 0.1, 0, Math.PI * 2); ctx.fill();
-            }
+            let drawX = (el.x - game.cameraX * 0.5) % WORLD_WIDTH;
+            if (drawX < 0) drawX += WORLD_WIDTH;
+            ctx.fillStyle = "rgba(255,255,255,0.2)";
+            ctx.fillRect(drawX, el.y, el.size, el.size);
         });
     }
 
@@ -279,6 +251,7 @@
                 const angle = Math.atan2(vy, vx);
                 const handX = shoulderX + Math.cos(angle) * 25;
                 const handY = shoulderY + Math.sin(angle) * 25;
+
                 ctx.beginPath(); ctx.moveTo(shoulderX, shoulderY); ctx.lineTo(handX, handY); ctx.stroke();
                 drawSpearGraphic(handX, handY, angle, (this.isP1 ? game.p1Weapon : game.p2Weapon), false, true);
             } else {
@@ -372,14 +345,17 @@
             
             p1.update(); p2.update(); p1.draw(); p2.draw();
 
+            // FIX: P2 İÇİN DE GÖZÜKEN VE SINIRLI ATIŞ İZİ
             if (game.isDragging && !game.isWaitingForAnim && game.state === 'PLAYING') {
                 let p = game.turn === 1 ? p1 : p2;
                 let sx = p.x - game.cameraX, sy = getTerrainY(p.x) - 60;
                 let vx = (game.dragStart.x - game.dragCurrent.x) * game.dragSensitivity;
                 let vy = (game.dragStart.y - game.dragCurrent.y) * game.dragSensitivity;
                 let mag = Math.hypot(vx, vy); if(mag > game.maxPower) { vx *= game.maxPower/mag; vy *= game.maxPower/mag; mag = game.maxPower; }
+                
                 ctx.fillStyle = "white"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center";
                 ctx.fillText(Math.round((mag/game.maxPower)*100) + "%", sx, sy - 110);
+                
                 let worldX = p.x, worldY = getTerrainY(p.x) - 60, tvx = vx, tvy = vy;
                 for(let i=0; i<25; i++) {
                     ctx.beginPath(); ctx.fillStyle = `rgba(255, 255, 255, ${1 - (i/25)})`;
@@ -396,6 +372,7 @@
                 let ty = getTerrainY(m.x);
                 let distBody = Math.hypot(m.x - target.x, m.y - (getTerrainY(target.x)-30));
                 let distHead = Math.hypot(m.x - target.x, m.y - (getTerrainY(target.x)-55));
+                
                 if (m.isExploded || distHead < 35 || distBody < 55 || m.y > ty) {
                     if (m.type === 'blackhole') { createParticles(m.x, m.y, '#000', 60, 8); if(distBody < 150) target.takeHit(60); }
                     else if (m.isExploded || m.type === 'bomb') { createParticles(m.x, m.y, '#ff4500', 45, 6); if(distBody < 120) target.takeHit(50); }
