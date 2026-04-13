@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bowmasters: Ultimate Powers - Wide View</title>
+    <title>Bowmasters: Ultimate Powers - Final Mobile Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background: #1a1a1a; touch-action: none; font-family: 'Arial Black', sans-serif; }
         canvas { display: block; }
@@ -88,9 +88,7 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const WORLD_WIDTH = 4000;
-    
-    // ZOOM AYARI: 1.0 tam ekran, 0.75 daha geniş görüş sağlar.
-    const GAME_SCALE = 0.75; 
+    const GAME_SCALE = 0.70; // Mobil ferahlık ayarı
 
     const game = {
         state: 'MENU', turn: 1, isFlying: false, score1: 0, score2: 0,
@@ -128,15 +126,13 @@
 
     function confirmWeapon() {
         if(game.choosingPlayer === 1) {
-            game.p1Weapon = tempWeapon;
-            game.choosingPlayer = 2;
+            game.p1Weapon = tempWeapon; game.choosingPlayer = 2;
             document.getElementById('choosing-title').innerText = "P2 SEÇİMİ";
             document.querySelectorAll('.weapon-opt').forEach(opt => opt.classList.remove('selected'));
             document.querySelector('.weapon-opt').classList.add('selected');
             tempWeapon = 'standard';
         } else {
-            game.p2Weapon = tempWeapon;
-            startGame();
+            game.p2Weapon = tempWeapon; startGame();
         }
     }
 
@@ -180,14 +176,12 @@
         grad.addColorStop(0, settings.sky);
         grad.addColorStop(1, "#ffffff");
         ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, canvas.width / GAME_SCALE, canvas.height / GAME_SCALE);
 
         game.bgElements.forEach(el => {
             let drawX = (el.x - game.cameraX * el.speed) % WORLD_WIDTH;
             if (drawX < -150) drawX += WORLD_WIDTH;
-
             ctx.fillStyle = `rgba(255, 255, 255, ${el.opacity})`;
-            
             if (settings.bgType === 'clouds') {
                 ctx.beginPath();
                 ctx.arc(drawX, el.y, el.size * 0.5, 0, Math.PI * 2);
@@ -208,7 +202,7 @@
     function generateTerrain() {
         game.terrainPoints = [];
         let points = [];
-        let baseHeight = window.innerHeight * 0.85;
+        let baseHeight = window.innerHeight * 0.9;
         for (let x = 0; x <= WORLD_WIDTH + 300; x += 200) points.push({ x, y: baseHeight + (Math.random() - 0.5) * 180 });
         for (let x = 0; x <= WORLD_WIDTH; x += 5) {
             let p1Idx = Math.floor(x / 200);
@@ -287,7 +281,6 @@
             } else {
                 ctx.beginPath(); ctx.moveTo(shoulderX, shoulderY); ctx.lineTo(this.isP1 ? 25 : -25, -25 + wobble); ctx.stroke();
             }
-            
             ctx.rotate(-this.angle); ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(-20, -85, 40, 5);
             ctx.fillStyle = this.hp > 30 ? "#2ecc71" : "#e74c3c"; ctx.fillRect(-20, -85, (Math.max(0, this.hp) / 100) * 40, 5);
             ctx.restore();
@@ -317,8 +310,11 @@
     function resetRound() { p1.hp = 100; p2.hp = 100; p1.x = 500; p2.x = WORLD_WIDTH - 500; p1.state = "idle"; p2.state = "idle"; game.activeProjectiles = []; game.isFlying = false; game.isWaitingForAnim = false; generateTerrain(); updateUI(); }
     function endGame(winner) { game.state = 'GAME_OVER'; game.winner = winner; setTimeout(goToMainMenu, 4000); }
 
+    // MOBİL VE PC FIX
     const handleStart = (e) => {
         if (game.state !== 'PLAYING' || game.isWaitingForAnim) return;
+        let cx = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+        let cy = e.clientY || (e.touches ? e.touches[0].clientY : 0);
         if (game.isFlying) {
             game.activeProjectiles.forEach(m => {
                 if (!m.usedAbility) {
@@ -331,11 +327,16 @@
                 }
             }); return;
         }
-        game.isDragging = true;
-        game.dragStart = { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY };
-        game.dragCurrent = game.dragStart;
+        game.isDragging = true; game.dragStart = { x: cx, y: cy }; game.dragCurrent = { x: cx, y: cy };
     };
-    const handleMove = (e) => { if (game.isDragging) game.dragCurrent = { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY }; };
+    const handleMove = (e) => {
+        if (game.isDragging) {
+            let cx = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+            let cy = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+            game.dragCurrent = { x: cx, y: cy };
+        }
+        if (e.touches) e.preventDefault(); 
+    };
     const handleEnd = () => {
         if (!game.isDragging) return;
         game.isDragging = false;
@@ -348,10 +349,9 @@
             game.isFlying = true;
         }
     };
+
     window.addEventListener('mousedown', handleStart); window.addEventListener('mousemove', handleMove); window.addEventListener('mouseup', handleEnd);
-    window.addEventListener('touchstart', (e) => { if(game.state==='PLAYING') handleStart(e); e.preventDefault(); }, {passive: false});
-    window.addEventListener('touchmove', (e) => { if(game.state==='PLAYING') handleMove(e); e.preventDefault(); }, {passive: false});
-    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchstart', handleStart, {passive: false}); window.addEventListener('touchmove', handleMove, {passive: false}); window.addEventListener('touchend', handleEnd, {passive: false});
 
     function drawSpearGraphic(x, y, angle, type, bound=true, held=false) {
         ctx.save(); ctx.translate(bound ? x - game.cameraX : x, y); ctx.rotate(angle);
@@ -365,21 +365,11 @@
     function update() {
         if (game.state === 'PLAYING' || game.state === 'GAME_OVER') {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            
-            // KAMERA ÖLÇEĞİNİ UYGULA
             ctx.save();
             ctx.scale(GAME_SCALE, GAME_SCALE);
-            
-            // Ölçekleme sonrası ekranın ortalanması için ek ofset
-            const offsetX = (canvas.width / GAME_SCALE - canvas.width) / 2;
-            const offsetY = (canvas.height / GAME_SCALE - canvas.height) / 2;
-            ctx.translate(0, offsetY); // Haritayı biraz aşağı kaydırarak gökyüzünü aç
-
             drawBackground();
             
             let focusX = game.isFlying && game.activeProjectiles[0] ? game.activeProjectiles[0].x : (game.isWaitingForAnim ? (game.turn===1?p2.x:p1.x) : (game.turn===1?p1.x:p2.x));
-            
-            // Kamera takibini ölçeklenmiş ekrana göre güncelle
             let targetCamX = focusX - (canvas.width / GAME_SCALE) / 2;
             game.cameraX += (targetCamX - game.cameraX) * 0.08;
             game.cameraX = Math.max(0, Math.min(game.cameraX, WORLD_WIDTH - (canvas.width / GAME_SCALE)));
@@ -406,7 +396,6 @@
                     if (worldY > getTerrainY(worldX)) break; 
                 }
             }
-
             for (let i = game.activeProjectiles.length-1; i>=0; i--) {
                 let m = game.activeProjectiles[i]; m.vy += game.gravity; m.x += m.vx; m.y += m.vy;
                 drawSpearGraphic(m.x, m.y, Math.atan2(m.vy, m.vx), m.type);
@@ -429,9 +418,7 @@
             }
             game.floatingTexts.forEach((t, i) => { t.y += t.vy; t.life -= 0.02; if(t.life<=0) game.floatingTexts.splice(i,1); ctx.globalAlpha = t.life; ctx.fillStyle = t.color; ctx.font = `bold ${t.size}px Arial`; ctx.textAlign="center"; ctx.fillText(t.text, t.x-game.cameraX, t.y); });
             game.particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.vy += 0.4; p.life -= 0.02; if (p.life <= 0) game.particles.splice(i, 1); ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.fillRect(p.x - game.cameraX, p.y, p.size, p.size); });
-            ctx.restore(); // ÖLÇEĞİ SIFIRLA (UI İÇİN)
-            
-            ctx.globalAlpha = 1;
+            ctx.restore();
             if (game.state === 'GAME_OVER') { ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle=game.winner==='KIRMIZI'?'#ff4757':'#1e90ff'; ctx.font="50px Arial"; ctx.textAlign="center"; ctx.fillText(game.winner + " KAZANDI!", canvas.width/2, canvas.height/2); }
         }
         requestAnimationFrame(update);
